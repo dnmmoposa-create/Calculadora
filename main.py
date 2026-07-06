@@ -1,114 +1,110 @@
-from tkinter import *
-from tkinter import messagebox
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.button import Button
+from kivy.uix.textinput import TextInput
+from kivy.core.window import Window
 
-# ---------------- Colores Estilo Neumorfismo / Minimalista ----------------
-COLOR_FONDO = "#7ebebe"      # Fondo principal ultra oscuro
-COLOR_PANTALLA = "#2e4141"   # Fondo de la pantalla
-COLOR_TEXTO = "#ffffff"      # Texto blanco
-COLOR_NUMEROS = "#2d3838"    # Gris oscuro para números
-COLOR_OPERADORES = "#f39c12" # Naranja para operaciones
-COLOR_IGUAL = "#27ae60"      # Verde para el resultado
-COLOR_HOVER = "#3e4f4f"      # Color al pasar el mouse por encima
+# Configurar el tamaño de la ventana para pruebas en PC (opcional)
+Window.size = (350, 520)
 
-# ---------------- Ventana ----------------
-ventana = Tk()
-ventana.title("Calculadora ")
-ventana.geometry("350x520")
-ventana.resizable(False, False)
-ventana.configure(bg=COLOR_FONDO)
+class CalculadoraApp(App):
+    def build(self):
+        self.title = "Calculadora"
+        
+        # Layout Principal (Vertical: Pantalla arriba, Botones abajo)
+        layout_principal = BoxLayout(orientation='vertical', spacing=10, padding=15)
+        # Fondo ultra oscuro (convertido de #171c1c a valores 0-1)
+        Window.clearcolor = (0.09, 0.11, 0.11, 1)
 
-# ---------------- Pantalla ----------------
-pantalla = Entry(
-    ventana,
-    font=("Helvetica", 28),
-    bd=0,
-    bg=COLOR_PANTALLA,
-    fg=COLOR_TEXTO,
-    justify="right",
-    insertbackground="white" 
-)
-pantalla.pack(fill=X, padx=20, pady=(30, 15), ipady=10)
+        # ---------------- Pantalla ----------------
+        self.pantalla = TextInput(
+            font_size=36,
+            readonly=True,
+            halign='right',
+            multiline=False,
+            background_color=(0.11, 0.14, 0.14, 1), # #1d2424
+            foreground_color=(1, 1, 1, 1),          # Blanco
+            size_hint_y=0.2,
+            padding=[10, 20, 10, 10]
+        )
+        layout_principal.add_widget(self.pantalla)
 
-def escribir(valor):
-    pantalla.insert(END, valor)
+        # ---------------- Contenedor de Botones ----------------
+        # Usamos un BoxLayout horizontal para separar los números de la barra del "="
+        layout_inferior = BoxLayout(orientation='horizontal', spacing=10, size_hint_y=0.8)
 
-def limpiar():
-    pantalla.delete(0, END)
+        # Cuadrícula para los botones normales (4 columnas)
+        cuadrilla = GridLayout(cols=4, spacing=8, size_hint_x=0.8)
 
-def calcular():
-    try:
-        resultado = eval(pantalla.get())
-        # Evitar decimales innecesarios (ej. 5.0 -> 5)
-        if isinstance(resultado, float) and resultado.is_integer():
-            resultado = int(resultado)
-        pantalla.delete(0, END)
-        pantalla.insert(END, str(resultado))
-    except:
-        messagebox.showerror("Error", "Operación no válida")
-        limpiar()
+        # Definición de los botones (Fila por fila)
+        botones = [
+            "C", "/", "*", "-",
+            "7", "8", "9", "+",
+            "4", "5", "6", ".",
+            "1", "2", "3", "0"
+        ]
 
-def on_enter(e):
-    if e.widget['bg'] != COLOR_OPERADORES and e.widget['bg'] != COLOR_IGUAL:
-        e.widget['bg'] = COLOR_HOVER
+        for texto in botones:
+            # Asignar colores según el tipo de botón
+            if texto in ["/", "*", "-", "+"]:
+                bg_color = (0.95, 0.61, 0.07, 1)  # Naranja #f39c12
+            elif texto == "C":
+                bg_color = (0.75, 0.22, 0.17, 1)  # Rojo #c0392b
+            else:
+                bg_color = (0.17, 0.22, 0.22, 1)  # Gris #2d3838
 
-def on_leave(e, color_original):
-    if e.widget['bg'] != COLOR_OPERADORES and e.widget['bg'] != COLOR_IGUAL:
-        e.widget['bg'] = color_original
+            btn = Button(
+                text=texto,
+                font_size=22,
+                bold=True,
+                background_normal='',  # Permite cambiar el color de fondo plano
+                background_color=bg_color,
+                color=(1, 1, 1, 1)
+            )
+            btn.bind(on_press=self.al_presionar_boton)
+            cuadrilla.add_widget(btn)
 
-# ---------------- Distribución de Botones ----------------
-marco = Frame(ventana, bg=COLOR_FONDO)
-marco.pack(pady=10)
+        layout_inferior.add_widget(cuadrilla)
 
-botones = [
-    ("C", 0, 0), ("/", 0, 1), ("*", 0, 2), ("-", 0, 3),
-    ("7", 1, 0), ("8", 1, 1), ("9", 1, 2), ("+", 1, 3),
-    ("4", 2, 0), ("5", 2, 1), ("6", 2, 2), ("=", 2, 3), # '=' ocupará dos filas verticalmente
-    ("1", 3, 0), ("2", 3, 1), ("3", 3, 2),
-    ("0", 4, 0), (".", 4, 1)
-]
+        # Botón "=" vertical a la derecha (abarca el alto de la botonera)
+        btn_igual = Button(
+            text="=",
+            font_size=24,
+            bold=True,
+            background_normal='',
+            background_color=(0.15, 0.68, 0.37, 1), # Verde #27ae60
+            color=(1, 1, 1, 1),
+            size_hint_x=0.2
+        )
+        btn_igual.bind(on_press=self.al_presionar_boton)
+        layout_inferior.add_widget(btn_igual)
 
-for (texto, fila, columna) in botones:
-    if texto in ["/", "*", "-", "+", "C"]:
-        bg_color = COLOR_OPERADORES if texto != "C" else "#c0392b" # Rojo suave para limpiar
-        fg_color = "white"
-    elif texto == "=":
-        bg_color = COLOR_IGUAL
-        fg_color = "white"
-    else:
-        bg_color = COLOR_NUMEROS
-        fg_color = COLOR_TEXTO
+        layout_principal.add_widget(layout_inferior)
+        return layout_principal
 
-    if texto == "=":
-        comando = calcular
-    elif texto == "C":
-        comando = limpiar
-    else:
-        comando = lambda t=texto: escribir(t)
+    # ---------------- Lógica de la Calculadora ----------------
+    def al_presionar_boton(self, instancia):
+        texto_boton = instancia.text
+        texto_actual = self.pantalla.text
 
-    btn = Button(
-        marco,
-        text=texto,
-        width=5,
-        height=2,
-        font=("Helvetica", 14, "bold"),
-        bg=bg_color,
-        fg=fg_color,
-        bd=0,
-        activebackground=COLOR_HOVER,
-        activeforeground="white",
-        cursor="hand2",
-        command=comando
-    )
-    
-    if texto == "=":
-        btn.grid(row=fila, column=columna, rowspan=3, sticky="nsew", padx=5, pady=5)
-    elif texto == "0":
-        btn.grid(row=fila, column=columna, columnspan=1, padx=5, pady=5)
-    else:
-        btn.grid(row=fila, column=columna, padx=5, pady=5)
+        if texto_boton == "C":
+            self.pantalla.text = ""
+        elif texto_boton == "=":
+            try:
+                # Reemplazar símbolos si es necesario y evaluar
+                resultado = eval(texto_actual)
+                # Evitar decimales flotantes limpios (ej: 5.0 -> 5)
+                if isinstance(resultado, float) and resultado.is_integer():
+                    resultado = int(resultado)
+                self.pantalla.text = str(resultado)
+            except Exception:
+                self.pantalla.text = "Error"
+        else:
+            # Si hay un "Error" previo en pantalla, lo limpia antes de escribir
+            if texto_actual == "Error":
+                texto_actual = ""
+            self.pantalla.text = texto_actual + texto_boton
 
-    if bg_color == COLOR_NUMEROS:
-        btn.bind("<Enter>", on_enter)
-        btn.bind("<Leave>", lambda e, bg=bg_color: on_leave(e, bg))
-
-ventana.mainloop()
+if __name__ == '__main__':
+    CalculadoraApp().run()
